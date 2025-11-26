@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Room of Memories</title>
+    <style>
+        :root {
+            --sketch-black: #2c2c2c;
+            --bg-color: #f4f4f4;
+            --paper-white: #ffffff;
+            --trans-speed: 2s;
+            
+            /* Color Palette (Hidden initially) */
+            --c-wall: #e0f7fa;
+            --c-floor: #d7ccc8;
+            --c-wood: #a1887f;
+            --c-bed: #ffcdd2;
+            --c-couch: #c5cae9;
+            --c-cat1: #ffab91; /* Orange */
+            --c-cat2: #cfd8dc; /* Grey/Fat */
+            --c-cat3: #ffffff; /* White */
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: #111;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* --- Game Container --- */
+        #game-stage {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            background: var(--paper-white);
+            border: 4px solid var(--sketch-black);
+            overflow: hidden;
+            transition: background-color var(--trans-speed);
+        }
+
+        /* --- Sketchy Border Logic --- */
+        .sketch {
+            border: 2px solid var(--sketch-black);
+            background: white;
+            box-sizing: border-box;
+            border-radius: 2px 255px 3px 25px / 255px 5px 225px 5px; /* Hand-drawn feel */
+            position: absolute;
+            transition: background-color var(--trans-speed), border-color var(--trans-speed);
+        }
+
+        .clickable {
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .clickable:hover {
+            transform: scale(1.02);
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        /* --- Room Layout --- */
+        /* Floor/Walls perspective simulation */
+        .floor {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 25%;
+            border-top: 2px solid var(--sketch-black);
+            z-index: 0;
+            transition: background-color var(--trans-speed);
+        }
+
+        /* --- Objects --- */
+        
+        /* Left Wall Area */
+        .door {
+            width: 60px;
+            height: 180px;
+            top: 100px;
+            left: 20px;
+            border-bottom: none;
+        }
+        .door-knob {
+            width: 8px;
+            height: 8px;
+            background: var(--sketch-black);
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            right: 10px;
+        }
+
+        /* Desks */
+        .desk-work {
+            width: 100px;
+            height: 80px;
+            left: 100px;
+            bottom: 60px; /* On 'floor' */
+            z-index: 10;
+        }
+        .desk-comp {
+            width: 100px;
+            height: 80px;
+            left: 210px;
+            bottom: 60px;
+            z-index: 10;
+        }
+        
+        /* Computer */
+        .computer {
+            width: 50px;
+            height: 40px;
+            bottom: 80px; /* On desk */
+            left: 235px;
+            z-index: 15;
+            background: white;
+        }
+        .screen {
+            width: 40px;
+            height: 25px;
+            margin: 5px auto;
+            border: 2px solid var(--sketch-black);
+            background: #eee;
+        }
+
+        /* Photos (Above work desk) */
+        .photo-frame {
+            width: 60px;
+            height: 40px;
+            left: 120px;
+            top: 200px; /* Wall height */
+            z-index: 5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 10px;
+            text-align: center;
+        }
+        .photo-inner {
+            width: 20px;
+            height: 20px;
+            border: 1px solid black;
+            border-radius: 50%;
+            margin: 2px;
+        }
+
+        /* Right Wall Area */
+        .wardrobe {
+            width: 100px;
+            height: 220px;
+            right: 20px;
+            bottom: 60px;
+            z-index: 10;
+        }
+        .wardrobe-handle {
+            width: 4px;
+            height: 20px;
+            background: black;
+            position: absolute;
+            top: 50%;
+            left: 20%;
+        }
+        
+        .bed {
+            width: 160px;
+            height: 70px;
+            right: 0;
+            bottom: 30px; /* Lower perspective */
+            z-index: 11;
+        }
+        .pillow {
+            width: 30px;
+            height: 20px;
+            border: 2px solid black;
+            background: white;
+            position: absolute;
+            right: 10px;
+            top: -10px;
+            border-radius: 5px;
+        }
+
+        .nightstand {
+            width: 40px;
+            height: 50px;
+            right: 170px;
+            bottom: 40px;
+            z-index: 10;
+        }
+
+        /* Far Wall Area */
+        .window {
+            width: 120px;
+            height: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            top: 50px;
+            z-index: 5;
+            overflow: hidden;
+            background: #fff;
+        }
+        .window-cross {
+            width: 100%;
+            height: 2px;
+            background: black;
+            position: absolute;
+            top: 50%;
+        }
+        .window-cross-v {
+            width: 2px;
+            height: 100%;
+            background: black;
+            position: absolute;
+            left: 50%;
+        }
+        
+        .couch {
+            width: 200px;
+            height: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 80px;
+            z-index: 8;
+        }
+
+        /* --- Cats --- */
+        .cat {
+            position: absolute;
+            z-index: 20;
+            width: 30px;
+            height: 25px;
+            border: 2px solid black;
+            border-radius: 50% 50% 40% 40%;
+            background: white;
+            transition: background-color var(--trans-speed);
+        }
+        .cat::before, .cat::after {
+            content: '';
+            position: absolute;
+            top: -8px;
+            width: 0; 
+            height: 0; 
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 10px solid black;
+        }
+        .cat::before { left: 2px; }
+        .cat::after { right: 2px; }
+
+        /* Cat Locations */
+        #cat1 { bottom: 220px; right: 50px; } /* Top of wardrobe */
+        #cat2 { top: -15px; left: 40px; } /* On couch */
+        #cat3 { bottom: 20px; left: 20px; } /* On bed */
+
+        /* --- Flowers (Hidden initially) --- */
+        .flower {
+            position: absolute;
+            font-size: 24px;
+            opacity: 0;
+            transition: opacity 3s ease;
+            z-index: 9;
+            pointer-events: none;
+        }
+
+        /* --- End Game Arrow --- */
+        #end-arrow {
+            position: absolute;
+            top: 180px;
+            left: 55%; /* Near window */
+            font-size: 40px;
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1s;
+            animation: bounce 1s infinite;
+            z-index: 50;
+        }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+        /* --- Modals --- */
+        #modal-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.9);
+            z-index: 100;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .modal-box {
+            border: 3px solid black;
+            padding: 30px;
+            background: white;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 10px 10px 0px rgba(0,0,0,0.2);
+        }
+        input {
+            border: 2px solid black;
+            padding: 5px;
+            font-family: inherit;
+            margin: 10px 0;
+            outline: none;
+            text-align: center;
+        }
+        button {
+            background: black;
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            font-family: inherit;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover { background: #444; }
+        .close-btn {
+            margin-top: 15px;
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 0.8em;
+        }
+
+        /* --- COLOR MODE (Endgame) --- */
+        body.full-color #game-stage { background: var(--c-wall); border-color: #5d4037; }
+        body.full-color .floor { background: var(--c-floor); border-color: #5d4037; }
+        body.full-color .sketch { border-color: #5d4037; }
+        
+        body.full-color .wardrobe, body.full-color .desk-work, body.full-color .desk-comp, 
+        body.full-color .nightstand, body.full-color .door { background: var(--c-wood); }
+        
+        body.full-color .bed { background: var(--c-bed); }
+        body.full-color .couch { background: var(--c-couch); }
+        
+        body.full-color #cat1 { background: var(--c-cat1); } /* Kurama */
+        body.full-color #cat2 { background: var(--c-cat2); } /* Abdul */
+        body.full-color #cat3 { background: var(--c-cat3); } /* Faye */
+
+        body.full-color .flower { opacity: 1; }
+        body.full-color #end-arrow { opacity: 1; pointer-events: auto; color: #d32f2f; }
+        body.full-color .window { background: #e3f2fd; } /* Blue sky */
+
+    </style>
+</head>
+<body>
+
+<div id="game-stage">
+    <div class="floor"></div>
+
+    <div class="sketch door">
+        <div class="door-knob"></div>
+    </div>
+
+    <div class="sketch desk-work"></div>
+    <div class="sketch desk-comp"></div>
+    
+    <div id="photo-hotspot" class="sketch photo-frame clickable">
+        <div class="photo-inner"></div><div class="photo-inner"></div>
+    </div>
+
+    <div id="computer-hotspot" class="sketch computer clickable">
+        <div class="screen"></div>
+    </div>
+
+    <div id="window-hotspot" class="sketch window clickable">
+        <div class="window-cross"></div>
+        <div class="window-cross-v"></div>
+    </div>
+    
+    <div class="sketch couch">
+        <div id="cat2" class="cat clickable" data-id="cat2"></div>
+    </div>
+
+    <div class="sketch wardrobe">
+        <div class="wardrobe-handle"></div>
+        <div id="cat1" class="cat clickable" data-id="cat1"></div>
+    </div>
+
+    <div class="sketch bed">
+        <div class="pillow"></div>
+        <div id="cat3" class="cat clickable" data-id="cat3"></div>
+    </div>
+
+    <div class="sketch nightstand"></div>
+
+    <div id="end-arrow">⬇</div>
+
+    <div class="flower" style="bottom: 80px; left: 150px;">🌸</div>
+    <div class="flower" style="bottom: 150px; right: 100px;">🌷</div>
+    <div class="flower" style="top: 120px; left: 300px;">🌻</div>
+    <div class="flower" style="bottom: 50px; left: 400px;">🌹</div>
+    <div class="flower" style="top: 220px; right: 200px;">🌺</div>
+</div>
+
+<div id="modal-overlay">
+    <div class="modal-box">
+        <h3 id="modal-title">Puzzle</h3>
+        <p id="modal-hint">Hint text here</p>
+        
+        <div id="input-area">
+            <input type="text" id="pass-input" placeholder="Password">
+            <br>
+            <button id="submit-btn">Unlock</button>
+            <p id="error-msg" style="color:red; font-size: 0.8em; display:none;">Incorrect</p>
+        </div>
+
+        <div id="note-area" style="display:none;">
+            <p id="note-text" style="font-style: italic; font-weight: bold; margin: 20px 0;"></p>
+        </div>
+
+        <div class="close-btn" id="modal-close">Close</div>
+    </div>
+</div>
+
+<script>
+    // --- Game State ---
+    const state = {
+        cat1: { solved: false, viewed: false, hint: "turuncu canavar kedisi", pass: "kurama", note: "\"Thank you for playing this. I hope it brought you a small smile. -Kurama\"" },
+        cat2: { solved: false, viewed: false, hint: "şişko hitler", pass: "abdül", note: "\"You’ve always had a beautiful way of solving things — in puzzles and in life. -Abdül\"" },
+        cat3: { solved: false, viewed: false, hint: "beyaz premses", pass: "faye", note: "\"I’m grateful for the memories we shared. They still mean a lot to me. -Faye\"" },
+        computer: { solved: false, viewed: false, hint: "computer password", pass: "2231", note: "\"Some part of me still reaches for you, the way flowers reach for sunlight.\"" },
+        photos: { solved: false, viewed: false, note: "\"You are the missing piece of my life of puzzle.\"" }
+    };
+
+    // --- DOM Elements ---
+    const modal = document.getElementById('modal-overlay');
+    const mTitle = document.getElementById('modal-title');
+    const mHint = document.getElementById('modal-hint');
+    const mInputArea = document.getElementById('input-area');
+    const mPassInput = document.getElementById('pass-input');
+    const mSubmit = document.getElementById('submit-btn');
+    const mError = document.getElementById('error-msg');
+    const mNoteArea = document.getElementById('note-area');
+    const mNoteText = document.getElementById('note-text');
+    const mClose = document.getElementById('modal-close');
+    const endArrow = document.getElementById('end-arrow');
+    const body = document.body;
+
+    let currentPuzzleId = null;
+
+    // --- Interaction Handlers ---
+
+    // 1. Cats & Computer
+    const setupPuzzleTrigger = (elementId, puzzleId, title) => {
+        document.getElementById(elementId).addEventListener('click', () => {
+            currentPuzzleId = puzzleId;
+            openModal(title, puzzleId);
+        });
+    };
+
+    setupPuzzleTrigger('cat1', 'cat1', 'The Cat in the Wardrobe');
+    setupPuzzleTrigger('cat2', 'cat2', 'The Cat on the Couch');
+    setupPuzzleTrigger('cat3', 'cat3', 'The Cat on the Bed');
+    setupPuzzleTrigger('computer-hotspot', 'computer', 'Computer Login');
+
+    // 2. Window
+    document.getElementById('window-hotspot').addEventListener('click', () => {
+        currentPuzzleId = null;
+        showSimpleMessage("Outside", "It's snowing outside. So cold…");
+    });
+
+    // 3. Photos
+    document.getElementById('photo-hotspot').addEventListener('click', () => {
+        // Check if all other puzzles are solved
+        const allSolved = state.cat1.solved && state.cat2.solved && state.cat3.solved && state.computer.solved;
+        
+        if (!allSolved) {
+            showSimpleMessage("Photos", "You must solve all puzzles before viewing this.");
+        } else {
+            // Success state for photos
+            state.photos.solved = true;
+            currentPuzzleId = 'photos'; // Mark for tracking view status
+            showNoteOnly("Photos", state.photos.note);
+        }
+    });
+
+    // 4. Endgame Arrow
+    endArrow.addEventListener('click', () => {
+        showSimpleMessage("Spring", "You brought color into my life the way spring brings flowers to the earth.");
+    });
+
+    // --- Modal Logic ---
+
+    function openModal(title, puzzleId) {
+        modal.style.display = 'flex';
+        mTitle.innerText = title;
+        mError.style.display = 'none';
+        mPassInput.value = '';
+
+        const puzzleData = state[puzzleId];
+
+        if (puzzleData.solved) {
+            // Already solved, show note directly
+            showNoteUI(puzzleData.note);
+        } else {
+            // Show input
+            mHint.innerText = `Hint: ${puzzleData.hint}`;
+            mInputArea.style.display = 'block';
+            mNoteArea.style.display = 'none';
+        }
+    }
+
+    function showSimpleMessage(title, msg) {
+        modal.style.display = 'flex';
+        mTitle.innerText = title;
+        mHint.innerText = "";
+        mInputArea.style.display = 'none';
+        mNoteArea.style.display = 'block';
+        mNoteText.innerText = msg;
+    }
+
+    function showNoteOnly(title, msg) {
+        modal.style.display = 'flex';
+        mTitle.innerText = title;
+        mHint.innerText = "";
+        showNoteUI(msg);
+    }
+
+    function showNoteUI(msg) {
+        mInputArea.style.display = 'none';
+        mNoteArea.style.display = 'block';
+        mNoteText.innerText = msg;
+    }
+
+    // Submit Password
+    mSubmit.addEventListener('click', () => {
+        if (!currentPuzzleId) return;
+        const input = mPassInput.value.trim().toLowerCase();
+        const correct = state[currentPuzzleId].pass;
+
+        if (input === correct || input === correct.toString()) {
+            state[currentPuzzleId].solved = true;
+            showNoteUI(state[currentPuzzleId].note);
+        } else {
+            mError.style.display = 'block';
+        }
+    });
+
+    // Close Modal
+    mClose.addEventListener('click', () => {
+        modal.style.display = 'none';
+        
+        // Mark viewed if it was a puzzle or the final photo
+        if (currentPuzzleId && state[currentPuzzleId]) {
+            // If it was solved (or is the photo which is auto-solved on click if allowed)
+            if(state[currentPuzzleId].solved) {
+                state[currentPuzzleId].viewed = true;
+                checkEndgame();
+            }
+        }
+        currentPuzzleId = null;
+    });
+
+    // --- Endgame Logic ---
+    function checkEndgame() {
+        const reqs = ['cat1', 'cat2', 'cat3', 'computer', 'photos'];
+        const allViewed = reqs.every(key => state[key].viewed === true);
+
+        if (allViewed) {
+            triggerColorBloom();
+        }
+    }
+
+    function triggerColorBloom() {
+        if (body.classList.contains('full-color')) return;
+        
+        // Small delay for dramatic effect
+        setTimeout(() => {
+            body.classList.add('full-color');
+        }, 500);
+    }
+
+</script>
+
+</body>
+</html>
